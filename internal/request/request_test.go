@@ -9,7 +9,11 @@ import (
 )
 
 func TestGetRequest(t *testing.T) {
-	r, err := RequestFromReader(strings.NewReader("GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	reader := &chunkReader{
+		data:            "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err := RequestFromReader(reader)
 
 	require.NoError(t, err)
 	require.NotNil(t, r)
@@ -20,7 +24,11 @@ func TestGetRequest(t *testing.T) {
 }
 
 func TestGetRequestWithPath(t *testing.T) {
-	r, err := RequestFromReader(strings.NewReader("GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	reader := &chunkReader{
+		data:            "GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 1,
+	}
+	r, err := RequestFromReader(reader)
 
 	require.NoError(t, err)
 	require.NotNil(t, r)
@@ -31,7 +39,12 @@ func TestGetRequestWithPath(t *testing.T) {
 }
 
 func TestPostRequest(t *testing.T) {
-	r, err := RequestFromReader(strings.NewReader("POST /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	reader := &chunkReader{
+		data:            "POST /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err := RequestFromReader(reader)
+
 	require.NoError(t, err)
 	require.NotNil(t, r)
 
@@ -41,7 +54,11 @@ func TestPostRequest(t *testing.T) {
 }
 
 func TestInvalidMethod(t *testing.T) {
-	_, err := RequestFromReader(strings.NewReader("/coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	reader := &chunkReader{
+		data:            "/coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 3,
+	}
+	_, err := RequestFromReader(reader)
 	require.Error(t, err)
 }
 
