@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	listener, err := net.Listen("tcp", "127.0.0.1:42069")
+	listener, err := net.Listen("tcp", "localhost:42069")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
@@ -52,12 +52,12 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 			n, err := f.Read(buf)
 
 			if err != nil {
-				if currentLine.Len() > 0 {
-					out <- currentLine.String()
-				}
-
 				if err != io.EOF {
 					fmt.Println("Read error:", err)
+				}
+
+				if currentLine.Len() > 0 {
+					out <- currentLine.String()
 				}
 
 				break
