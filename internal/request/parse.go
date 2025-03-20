@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+const (
+	crlf = "\r\n"
+)
+
 var (
 	methods                     = []string{"GET", "POST", "PUT", "DELETE"}
 	ErrTryingToParseDoneRequest = errors.New("error: trying to read data in a done request")
@@ -42,7 +46,7 @@ func (r *Request) parse(data []byte) (int, error) {
 }
 
 func parseRequestLine(data string) (RequestLine, int, error) {
-	endIndex := strings.Index(data, "\r\n")
+	endIndex := strings.Index(data, crlf)
 	if endIndex == -1 {
 		return RequestLine{}, 0, nil
 	}

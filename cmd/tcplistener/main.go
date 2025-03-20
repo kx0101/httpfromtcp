@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net"
-	"strings"
+
+	request "github.com/kx0101/httpfromtcp/internal/request"
 )
 
 func main() {
@@ -27,54 +27,24 @@ func main() {
 		fmt.Println("connection accepted")
 
 		go func(conn net.Conn) {
-			defer conn.Close()
-			defer fmt.Println("connection closed")
+			defer func() {
+				conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nDone\n"))
 
-			lines := getLinesChannel(conn)
+				conn.Close()
+				fmt.Println("connection closed")
+			}()
 
-			for line := range lines {
-				fmt.Println(line)
+			req, err := request.RequestFromReader(conn)
+			if err != nil {
+				fmt.Println("error:", err)
+				return
 			}
+
+			fmt.Printf("Request Line:\n"+
+				"  - Method: %s\n"+
+				"  - Target: %s\n"+
+				"  - Version: %s\n",
+				req.RequestLine.Method, req.RequestLine.RequestTarget, req.RequestLine.HttpVersion)
 		}(conn)
 	}
-}
-
-func getLinesChannel(f io.ReadCloser) <-chan string {
-	out := make(chan string)
-
-	go func() {
-		defer close(out)
-
-		currentLine := strings.Builder{}
-		buf := make([]byte, 8)
-
-		for {
-			n, err := f.Read(buf)
-
-			if err != nil {
-				if err != io.EOF {
-					fmt.Println("Read error:", err)
-				}
-
-				if currentLine.Len() > 0 {
-					out <- currentLine.String()
-				}
-
-				break
-			}
-
-			parts := strings.Split(string(buf[:n]), "\n")
-			for i, part := range parts {
-				if i == len(parts)-1 {
-					currentLine.WriteString(part)
-					continue
-				}
-
-				out <- currentLine.String() + part
-				currentLine.Reset()
-			}
-		}
-	}()
-
-	return out
 }

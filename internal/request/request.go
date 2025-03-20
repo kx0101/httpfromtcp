@@ -24,15 +24,6 @@ const (
 	Done
 )
 
-var statusName = map[Status]string{
-	Initialized: "initialized",
-	Done:        "done",
-}
-
-func (s Status) String() string {
-	return statusName[s]
-}
-
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	buf := make([]byte, BufferSize, BufferSize)
 	readToIndex := 0
