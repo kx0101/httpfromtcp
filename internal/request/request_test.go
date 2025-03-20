@@ -1,7 +1,6 @@
 package request
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,16 +62,28 @@ func TestInvalidMethod(t *testing.T) {
 }
 
 func TestInvalidNumberOfParts(t *testing.T) {
-	_, err := RequestFromReader(strings.NewReader("GET /coffee"))
+	reader := &chunkReader{
+		data:            "GET /coffee\r\n",
+		numBytesPerRead: 8,
+	}
+	_, err := RequestFromReader(reader)
 	require.Error(t, err)
 }
 
 func TestInvalidMethodOutOfOrder(t *testing.T) {
-	_, err := RequestFromReader(strings.NewReader("/coffee GET HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	reader := &chunkReader{
+		data:            "/coffee GET HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 4,
+	}
+	_, err := RequestFromReader(reader)
 	require.Error(t, err)
 }
 
 func TestInvalidVersion(t *testing.T) {
-	_, err := RequestFromReader(strings.NewReader("GET /coffee HTTP/420.69\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	reader := &chunkReader{
+		data:            "GET /coffee HTTP/420.69\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 1,
+	}
+	_, err := RequestFromReader(reader)
 	require.Error(t, err)
 }
