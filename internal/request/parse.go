@@ -3,7 +3,6 @@ package request
 import (
 	"errors"
 	"fmt"
-	// h "github.com/kx0101/httpfromtcp/internal/headers"
 	"slices"
 	"strings"
 )
@@ -15,20 +14,26 @@ const (
 var (
 	methods                     = []string{"GET", "POST", "PUT", "DELETE"}
 	ErrTryingToParseDoneRequest = errors.New("error: trying to read data in a done request")
-	ErrInvalidRequestLine       = errors.New("invalid request line")
-	ErrInvalidMethod            = errors.New("invalid method")
-	ErrInvalidTarget            = errors.New("invalid request target")
-	ErrInvalidHTTPVersion       = errors.New("invalid HTTP version")
+	ErrInvalidRequestLine       = errors.New("error: invalid request line")
+	ErrInvalidMethod            = errors.New("error: invalid method")
+	ErrInvalidTarget            = errors.New("error: invalid request target")
+	ErrInvalidHTTPVersion       = errors.New("error: invalid HTTP version")
 	ErrUnknownState             = errors.New("error: unknown state")
 )
 
 func (r *Request) parse(data []byte) (int, error) {
-	if r.Status == RequestStateDone {
-		return 0, ErrTryingToParseDoneRequest
-	}
+	if r.Status == RequestStateParsingHeaders {
+		bytesParsed, done, err := r.Headers.Parse(data)
 
-	if r.Status != Initialized {
-		return 0, ErrUnknownState
+		if err != nil {
+			return 0, err
+		}
+
+		if done {
+			r.Status = RequestStateParsingBody
+		}
+
+		return bytesParsed, err
 	}
 
 	requestLine, requestLineBytesParsed, err := parseRequestLine(string(data))
@@ -41,7 +46,7 @@ func (r *Request) parse(data []byte) (int, error) {
 	}
 
 	r.RequestLine = requestLine
-	r.Status = RequestStateDone
+	r.Status = RequestStateParsingHeaders
 
 	return requestLineBytesParsed, err
 }

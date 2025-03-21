@@ -6,10 +6,10 @@ import (
 )
 
 var (
-	ErrMalformedHeaderWhitespace = errors.New("malformed header: spaces before colon")
-	ErrMalformedHeaderNotFound   = errors.New("malformed header: colon not found")
-	ErrInvalidHeaderKey          = errors.New("invalid header key")
-	ErrInvalidHeaderValue        = errors.New("invalid header value")
+	ErrMalformedHeaderWhitespace = errors.New("error: malformed header: spaces before colon")
+	ErrMalformedHeaderNotFound   = errors.New("error: malformed header: colon not found")
+	ErrInvalidHeaderKey          = errors.New("error: invalid header key")
+	ErrInvalidHeaderValue        = errors.New("error: invalid header value")
 )
 
 var validCharsMap = map[rune]bool{
@@ -29,7 +29,7 @@ const (
 
 type Headers map[string]string
 
-func (h Headers) Parse(data []byte) (n int, done bool, err error) {
+func (h *Headers) Parse(data []byte) (n int, done bool, err error) {
 	d := string(data)
 	bytesParsed := 0
 

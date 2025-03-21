@@ -11,7 +11,7 @@ const (
 
 type Request struct {
 	RequestLine RequestLine
-	Headers     h.Headers
+	Headers     *h.Headers
 	Status      Status
 }
 
@@ -27,6 +27,7 @@ const (
 	Initialized Status = iota
 	RequestStateParsingHeaders
 	RequestStateDone
+	RequestStateParsingBody
 )
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
@@ -35,7 +36,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 	r := Request{
 		RequestLine: RequestLine{},
-		Headers:     h.Headers{},
+		Headers:     h.NewHeaders(),
 		Status:      Initialized,
 	}
 
