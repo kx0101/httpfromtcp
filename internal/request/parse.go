@@ -22,33 +22,75 @@ var (
 )
 
 func (r *Request) parse(data []byte) (int, error) {
-	if r.Status == RequestStateParsingHeaders {
-		bytesParsed, done, err := r.Headers.Parse(data)
+	totalBytesParsed := 0
+
+	for r.Status != RequestStateDone {
+		bytesParsed, err := r.parseSingle(data[totalBytesParsed:])
 
 		if err != nil {
-			return 0, err
+			return totalBytesParsed, err
 		}
 
-		if done {
-			r.Status = RequestStateParsingBody
+		if bytesParsed == 0 {
+			break
 		}
 
-		return bytesParsed, err
+		totalBytesParsed += bytesParsed
 	}
 
-	requestLine, requestLineBytesParsed, err := parseRequestLine(string(data))
+	return totalBytesParsed, nil
+}
+
+func (r *Request) parseSingle(data []byte) (int, error) {
+	switch r.Status {
+	case Initialized:
+		return r.parseRequestLine(data)
+	case RequestStateParsingHeaders:
+		return r.parseHeaders(data)
+	case RequestStateParsingBody:
+		return r.parseBody(data)
+	default:
+		return 0, fmt.Errorf("%w: %d", ErrUnknownState, r.Status)
+	}
+}
+
+func (r *Request) parseRequestLine(data []byte) (int, error) {
+	requestLine, bytesParsed, err := parseRequestLine(string(data))
+
 	if err != nil {
 		return 0, err
 	}
 
-	if requestLineBytesParsed == 0 {
+	if bytesParsed == 0 {
 		return 0, nil
 	}
 
 	r.RequestLine = requestLine
 	r.Status = RequestStateParsingHeaders
 
-	return requestLineBytesParsed, err
+	fmt.Println("bytes parsed from requestline", bytesParsed)
+	return bytesParsed, nil
+}
+
+func (r *Request) parseHeaders(data []byte) (int, error) {
+	bytesParsed, done, err := r.Headers.Parse(data)
+	if err != nil {
+		return 0, err
+	}
+
+	if bytesParsed == 0 {
+		return 0, nil
+	}
+
+	if done {
+		r.Status = RequestStateParsingBody
+	}
+
+	return bytesParsed, nil
+}
+
+func (r *Request) parseBody(data []byte) (int, error) {
+	return 0, nil
 }
 
 func parseRequestLine(data string) (RequestLine, int, error) {
