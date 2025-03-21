@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	request "github.com/kx0101/httpfromtcp/internal/request"
 )
@@ -40,11 +41,18 @@ func main() {
 				return
 			}
 
+			headers := strings.Builder{}
+			for k, v := range *req.Headers {
+				headers.WriteString(fmt.Sprintf("  - %s: %s\n", k, v))
+			}
+
 			fmt.Printf("Request Line:\n"+
 				"  - Method: %s\n"+
 				"  - Target: %s\n"+
-				"  - Version: %s\n",
-				req.RequestLine.Method, req.RequestLine.RequestTarget, req.RequestLine.HttpVersion)
+				"  - Version: %s\n"+
+				"Headers:\n"+
+				"%s",
+				req.RequestLine.Method, req.RequestLine.RequestTarget, req.RequestLine.HttpVersion, headers.String())
 		}(conn)
 	}
 }

@@ -68,7 +68,6 @@ func (r *Request) parseRequestLine(data []byte) (int, error) {
 	r.RequestLine = requestLine
 	r.Status = RequestStateParsingHeaders
 
-	fmt.Println("bytes parsed from requestline", bytesParsed)
 	return bytesParsed, nil
 }
 
