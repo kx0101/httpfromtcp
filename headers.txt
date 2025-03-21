@@ -1,0 +1,11 @@
+server started on port 42069
+connection accepted
+Request Line:
+  - Method: GET
+  - Target: /use-neovim-btw
+  - Version: HTTP/1.1
+Headers:
+  - accept: */*
+  - host: localhost:42069
+  - user-agent: curl/8.5.0
+connection closed
