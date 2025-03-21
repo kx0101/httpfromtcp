@@ -57,3 +57,42 @@ func TestValidOneHeaderWithThreeValues(t *testing.T) {
 	assert.Equal(t, len(data), n)
 	assert.True(t, done)
 }
+
+func TestCaseInsensitiveHeader(t *testing.T) {
+	headers := NewHeaders()
+	data := []byte("Host: localhost:42069\r\n\r\n")
+
+	n, done, err := headers.Parse(data)
+
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "localhost:42069", headers.Get("host"))
+	assert.Equal(t, len(data), n)
+	assert.True(t, done)
+}
+
+func TestDuplicateHeader(t *testing.T) {
+	headers := NewHeaders()
+	data := []byte("Host: localhost:42069\r\nHost: localhost:42070\r\n\r\n")
+
+	n, done, err := headers.Parse(data)
+
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "localhost:42070", headers.Get("Host"))
+	assert.Equal(t, len(data), n)
+	assert.True(t, done)
+}
+
+func TestMissingEndOfHeaders(t *testing.T) {
+	headers := NewHeaders()
+	data := []byte("Host: localhost:42069\r\n")
+
+	n, done, err := headers.Parse(data)
+
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "localhost:42069", headers.Get("Host"))
+	assert.Equal(t, len(data), n)
+	assert.False(t, done)
+}
