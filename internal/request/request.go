@@ -1,6 +1,9 @@
 package request
 
-import "io"
+import (
+	h "github.com/kx0101/httpfromtcp/internal/headers"
+	"io"
+)
 
 const (
 	BufferSize = 8
@@ -8,6 +11,7 @@ const (
 
 type Request struct {
 	RequestLine RequestLine
+	Headers     h.Headers
 	Status      Status
 }
 
@@ -21,7 +25,8 @@ type Status int
 
 const (
 	Initialized Status = iota
-	Done
+	RequestStateParsingHeaders
+	RequestStateDone
 )
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
@@ -30,6 +35,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 	r := Request{
 		RequestLine: RequestLine{},
+		Headers:     h.Headers{},
 		Status:      Initialized,
 	}
 
@@ -62,7 +68,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			readToIndex -= bytesParsed
 		}
 
-		if r.Status == Done {
+		if r.Status == RequestStateDone {
 			break
 		}
 	}

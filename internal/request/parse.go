@@ -3,6 +3,7 @@ package request
 import (
 	"errors"
 	"fmt"
+	// h "github.com/kx0101/httpfromtcp/internal/headers"
 	"slices"
 	"strings"
 )
@@ -22,7 +23,7 @@ var (
 )
 
 func (r *Request) parse(data []byte) (int, error) {
-	if r.Status == Done {
+	if r.Status == RequestStateDone {
 		return 0, ErrTryingToParseDoneRequest
 	}
 
@@ -30,19 +31,19 @@ func (r *Request) parse(data []byte) (int, error) {
 		return 0, ErrUnknownState
 	}
 
-	requestLine, bytesRead, err := parseRequestLine(string(data))
+	requestLine, requestLineBytesParsed, err := parseRequestLine(string(data))
 	if err != nil {
 		return 0, err
 	}
 
-	if bytesRead == 0 {
+	if requestLineBytesParsed == 0 {
 		return 0, nil
 	}
 
 	r.RequestLine = requestLine
-	r.Status = Done
+	r.Status = RequestStateDone
 
-	return bytesRead, nil
+	return requestLineBytesParsed, err
 }
 
 func parseRequestLine(data string) (RequestLine, int, error) {

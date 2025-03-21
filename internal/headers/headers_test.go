@@ -16,7 +16,7 @@ func TestValidSingleHeader(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, headers)
 	assert.Equal(t, "localhost:42069", headers.Get("Host"))
-	assert.Equal(t, 25, n)
+	assert.Equal(t, len(data), n)
 	assert.True(t, done)
 }
 
@@ -41,6 +41,19 @@ func TestValidTwoHeaders(t *testing.T) {
 	require.NotNil(t, headers)
 	assert.Equal(t, "localhost:42069", headers.Get("Host"))
 	assert.Equal(t, "curl/7.68.0", headers.Get("User-Agent"))
-	assert.Equal(t, 50, n)
+	assert.Equal(t, len(data), n)
+	assert.True(t, done)
+}
+
+func TestValidOneHeaderWithThreeValues(t *testing.T) {
+	headers := NewHeaders()
+	data := []byte("Host: localhost:42069; localhost:42070; localhost:42071;\r\n\r\n")
+
+	n, done, err := headers.Parse(data)
+
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "localhost:42069; localhost:42070; localhost:42071;", headers.Get("Host"))
+	assert.Equal(t, len(data), n)
 	assert.True(t, done)
 }

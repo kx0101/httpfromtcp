@@ -8,7 +8,8 @@ import (
 var (
 	ErrMalformedHeaderWhitespace = errors.New("malformed header: spaces before colon")
 	ErrMalformedHeaderNotFound   = errors.New("malformed header: colon not found")
-	ErrInvalidHeaderChars        = errors.New("invalid header characters")
+	ErrInvalidHeaderKey          = errors.New("invalid header key")
+	ErrInvalidHeaderValue        = errors.New("invalid header value")
 )
 
 var validCharsMap = map[rune]bool{
@@ -19,7 +20,7 @@ var validCharsMap = map[rune]bool{
 	'O': true, 'P': true, 'Q': true, 'R': true, 'S': true, 'T': true, 'U': true, 'V': true, 'W': true, 'X': true,
 	'Y': true, 'Z': true, '0': true, '1': true, '2': true, '3': true, '4': true, '5': true, '6': true, '7': true,
 	'8': true, '9': true, '!': true, '#': true, '$': true, '%': true, '&': true, '\'': true, '/': true, '*': true, '+': true,
-	'-': true, '.': true, '^': true, '_': true, '`': true, '|': true, '~': true, ':': true,
+	'-': true, '.': true, '^': true, '_': true, '`': true, '|': true, '~': true, ':': true, ';': true,
 }
 
 const (
@@ -57,20 +58,15 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 		key := strings.TrimSpace(headerLine[:colonIndex])
 		value := strings.TrimSpace(headerLine[colonIndex+1:])
 
-		for _, c := range key {
-			if !isValidHeaderKey(c) {
-				return 0, false, ErrInvalidHeaderChars
-			}
+		if !isValidHeaderKey(key) {
+			return 0, false, ErrInvalidHeaderKey
 		}
 
-		for _, c := range value {
-			if !isValidHeaderValue(c) {
-				return 0, false, ErrInvalidHeaderChars
-			}
+		if !isValidHeaderValue(value) {
+			return 0, false, ErrInvalidHeaderValue
 		}
 
-		key = strings.ToLower(key)
-		h[key] = value
+		h.Set(key, normalizeHeaderValue(value))
 
 		bytesParsed = crlfIndex + 2
 
@@ -86,17 +82,63 @@ func (h Headers) Get(key string) string {
 	return h[strings.ToLower(key)]
 }
 
+func (h Headers) Set(key, value string) {
+	h[strings.ToLower(key)] = value
+}
+
+func (h Headers) Exists(key string) bool {
+	_, exists := h[strings.ToLower(key)]
+	return exists
+}
+
 func NewHeaders() *Headers {
 	headers := make(Headers)
 	return &headers
 }
 
-func isValidHeaderValue(c rune) bool {
-	_, exists := validCharsMap[c]
-	return exists
+func isValidHeaderKey(key string) bool {
+	for _, c := range key {
+		if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
+			return false
+		}
+	}
+
+	return true
 }
 
-func isValidHeaderKey(c rune) bool {
-	return c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' &&
-		c <= '9' || c == '-' || c == '_'
+func isValidHeaderValue(value string) bool {
+	for _, c := range value {
+		if !isAllowedHeaderValueChar(c) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func isAllowedHeaderValueChar(c rune) bool {
+	switch c {
+	case '!', '#', '$', '%', '&', '\'', '/', '*', '+', '-', '.', '^', '_', '`', '|', '~', ':', ';', ' ':
+		return true
+	}
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+}
+
+func normalizeHeaderValue(value string) string {
+	if !strings.Contains(value, ";") {
+		return value
+	}
+
+	parts := strings.Split(value, ";")
+	var builder strings.Builder
+
+	for i, part := range parts {
+		builder.WriteString(strings.TrimSpace(part))
+
+		if i != len(parts)-1 {
+			builder.WriteString("; ")
+		}
+	}
+
+	return strings.TrimSpace(builder.String())
 }
