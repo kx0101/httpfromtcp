@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -12,13 +13,15 @@ const (
 )
 
 var (
-	methods                     = []string{"GET", "POST", "PUT", "DELETE"}
-	ErrTryingToParseDoneRequest = errors.New("error: trying to read data in a done request")
-	ErrInvalidRequestLine       = errors.New("error: invalid request line")
-	ErrInvalidMethod            = errors.New("error: invalid method")
-	ErrInvalidTarget            = errors.New("error: invalid request target")
-	ErrInvalidHTTPVersion       = errors.New("error: invalid HTTP version")
-	ErrUnknownState             = errors.New("error: unknown state")
+	methods                             = []string{"GET", "POST", "PUT", "DELETE"}
+	ErrTryingToParseDoneRequest         = errors.New("error: trying to read data in a done request")
+	ErrInvalidRequestLine               = errors.New("error: invalid request line")
+	ErrInvalidMethod                    = errors.New("error: invalid method")
+	ErrInvalidTarget                    = errors.New("error: invalid request target")
+	ErrInvalidHTTPVersion               = errors.New("error: invalid HTTP version")
+	ErrUnknownState                     = errors.New("error: unknown state")
+	ErrInvalidContentLength             = errors.New("error: invalid Content-Length")
+	ErrInvalidContentLengthExpectedMore = errors.New("error: invalid request content length not equal to body")
 )
 
 func (r *Request) parse(data []byte) (int, error) {
@@ -36,6 +39,10 @@ func (r *Request) parse(data []byte) (int, error) {
 		}
 
 		totalBytesParsed += bytesParsed
+	}
+
+	if r.Status == RequestStateDone && totalBytesParsed != len(data) {
+		return totalBytesParsed, ErrInvalidContentLengthExpectedMore
 	}
 
 	return totalBytesParsed, nil
@@ -85,11 +92,35 @@ func (r *Request) parseHeaders(data []byte) (int, error) {
 		r.Status = RequestStateParsingBody
 	}
 
+	if done && r.Headers.Get("Content-Length") == "" {
+		r.Status = RequestStateDone
+	}
+
 	return bytesParsed, nil
 }
 
 func (r *Request) parseBody(data []byte) (int, error) {
-	return 0, nil
+	contentLength := r.Headers.Get("Content-Length")
+
+	length, err := strconv.Atoi(contentLength)
+	if err != nil || length <= 0 {
+		return 0, ErrInvalidContentLength
+	}
+
+	if len(r.Body) >= length {
+		return 0, ErrInvalidContentLength
+	}
+
+	remainingBytes := length - len(r.Body)
+	bytesToRead := min(len(data), remainingBytes)
+
+	r.Body = append(r.Body, data[:bytesToRead]...)
+
+	if len(r.Body) == length {
+		r.Status = RequestStateDone
+	}
+
+	return bytesToRead, nil
 }
 
 func parseRequestLine(data string) (RequestLine, int, error) {

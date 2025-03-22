@@ -51,8 +51,10 @@ func main() {
 				"  - Target: %s\n"+
 				"  - Version: %s\n"+
 				"Headers:\n"+
-				"%s",
-				req.RequestLine.Method, req.RequestLine.RequestTarget, req.RequestLine.HttpVersion, headers.String())
+				"%s"+
+				"Body:\n"+
+				"%s\n",
+				req.RequestLine.Method, req.RequestLine.RequestTarget, req.RequestLine.HttpVersion, headers.String(), string(req.Body))
 		}(conn)
 	}
 }

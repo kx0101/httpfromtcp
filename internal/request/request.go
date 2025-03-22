@@ -1,17 +1,25 @@
 package request
 
 import (
-	h "github.com/kx0101/httpfromtcp/internal/headers"
+	"fmt"
 	"io"
+	"strconv"
+
+	h "github.com/kx0101/httpfromtcp/internal/headers"
 )
 
 const (
 	BufferSize = 8
 )
 
+var (
+	ErrInvalidRequestContentLengthNotEqualToBody = fmt.Errorf("error: invalid request content length not equal to body")
+)
+
 type Request struct {
 	RequestLine RequestLine
 	Headers     *h.Headers
+	Body        []byte
 	Status      Status
 }
 
@@ -37,6 +45,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	r := Request{
 		RequestLine: RequestLine{},
 		Headers:     h.NewHeaders(),
+		Body:        nil,
 		Status:      Initialized,
 	}
 
@@ -74,5 +83,27 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		}
 	}
 
+	if err := r.ValidateBodyAfterFinishParsing(); err != nil {
+		return nil, err
+	}
+
 	return &r, nil
+}
+
+func (r *Request) ValidateBodyAfterFinishParsing() error {
+	contentLengthStr := r.Headers.Get("Content-Length")
+	if contentLengthStr == "" {
+		return nil
+	}
+
+	contentLength, err := strconv.Atoi(contentLengthStr)
+	if err != nil {
+		return ErrInvalidContentLength
+	}
+
+	if len(r.Body) != contentLength {
+		return ErrInvalidRequestContentLengthNotEqualToBody
+	}
+
+	return nil
 }
