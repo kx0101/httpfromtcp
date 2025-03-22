@@ -12,6 +12,7 @@ func TestGetRequest(t *testing.T) {
 		data:            "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
 		numBytesPerRead: 3,
 	}
+
 	r, err := RequestFromReader(reader)
 
 	require.NoError(t, err)
@@ -27,6 +28,7 @@ func TestGetRequestWithPath(t *testing.T) {
 		data:            "GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
 		numBytesPerRead: 1,
 	}
+
 	r, err := RequestFromReader(reader)
 
 	require.NoError(t, err)
@@ -42,6 +44,7 @@ func TestPostRequest(t *testing.T) {
 		data:            "POST /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
 		numBytesPerRead: 3,
 	}
+
 	r, err := RequestFromReader(reader)
 
 	require.NoError(t, err)
