@@ -1,8 +1,9 @@
 package response
 
 import (
-	"io"
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/kx0101/httpfromtcp/internal/headers"
 )
@@ -15,7 +16,35 @@ const (
 	InternalServerError StatusCode = 500
 )
 
-func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
+type Writer struct {
+	StatusCode StatusCode
+	Headers    headers.Headers
+	Body       []byte
+	State      int
+}
+
+func NewWriter() *Writer {
+	return &Writer{
+		Headers: headers.Headers{},
+		Body:    []byte{},
+		State:   0,
+	}
+}
+
+func (w *Writer) SetHeader(key, value string) {
+	if w.State >= 2 {
+		fmt.Println("Warning: Attempted to modify headers after they were written")
+		return
+	}
+
+	w.Headers.Set(key, value)
+}
+
+func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
+	if w.State != 0 {
+		return fmt.Errorf("error: status line already written")
+	}
+
 	var statusLine string
 
 	switch {
@@ -29,36 +58,50 @@ func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 		statusLine = "HTTP/1.1 500 Internal Server Error\r\n"
 	}
 
-	_, err := w.Write([]byte(statusLine))
-	if err != nil {
-		return err
+	w.Body = append(w.Body, []byte(statusLine)...)
+	w.State = 1
+	return nil
+}
+
+func (w *Writer) WriteHeaders(headers headers.Headers) error {
+	if w.State != 1 {
+		return fmt.Errorf("error: headers already written")
 	}
+
+	var headerStr strings.Builder
+	for k, v := range headers {
+		headerStr.WriteString(k + ": " + v + "\r\n")
+	}
+
+	headerStr.WriteString("\r\n")
+
+	w.Body = append(w.Body, []byte(headerStr.String())...)
+	w.State = 2
 
 	return nil
 }
 
-func GetDefaultHeaders(contentLen int) headers.Headers {
+func (w *Writer) Write(p []byte) (int, error) {
+	if w.State != 1 {
+		return 0, fmt.Errorf("error: body already written")
+
+	}
+
+	if w.State < 2 {
+		w.WriteHeaders(w.Headers)
+	}
+
+	w.Body = append(w.Body, p...)
+	w.State = 3
+	return len(p), nil
+}
+
+func GetDefaultHeaders(contentLen int, contentType string) headers.Headers {
 	contentLength := strconv.Itoa(contentLen)
 
 	return headers.Headers{
-		"Content-Type":   "text/plain",
+		"Content-Type":   contentType,
 		"Content-Length": contentLength,
 		"Connection":     "close",
 	}
-}
-
-func WriteHeaders(w io.Writer, headers headers.Headers) error {
-	for k, v := range headers {
-		_, err := w.Write([]byte(k + ": " + v + "\r\n"))
-		if err != nil {
-			return err
-		}
-	}
-
-	_, err := w.Write([]byte("\r\n"))
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
