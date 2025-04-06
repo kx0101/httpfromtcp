@@ -60,6 +60,7 @@ func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
 
 	w.Body = append(w.Body, []byte(statusLine)...)
 	w.State = 1
+
 	return nil
 }
 
@@ -81,6 +82,32 @@ func (w *Writer) WriteHeaders(headers headers.Headers) error {
 	return nil
 }
 
+func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
+	if w.State < 2 {
+		w.Headers.Delete("Content-Length")
+		w.Headers.Set("Transfer-Encoding", "chunked")
+
+		if err := w.WriteHeaders(w.Headers); err != nil {
+			return 0, err
+		}
+	}
+
+	chunkSize := fmt.Sprintf("%x\r\n", len(p))
+	chunk := append([]byte(chunkSize), p...)
+	chunkData := append(chunk, []byte("\r\n")...)
+
+	w.Body = append(w.Body, chunkData...)
+
+	return len(chunkData), nil
+}
+
+func (w *Writer) WriteChunkedBodyDone() (int, error) {
+	finalChunk := []byte("0\r\n\r\n")
+	w.Body = append(w.Body, finalChunk...)
+
+	return len(finalChunk), nil
+}
+
 func (w *Writer) Write(p []byte) (int, error) {
 	if w.State != 1 {
 		return 0, fmt.Errorf("error: body already written")
@@ -93,6 +120,7 @@ func (w *Writer) Write(p []byte) (int, error) {
 
 	w.Body = append(w.Body, p...)
 	w.State = 3
+
 	return len(p), nil
 }
 

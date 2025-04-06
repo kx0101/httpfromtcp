@@ -42,7 +42,9 @@ func (r *Request) parse(data []byte) (int, error) {
 	}
 
 	if r.Status == RequestStateDone && totalBytesParsed != len(data) {
-		return totalBytesParsed, ErrInvalidContentLengthExpectedMore
+		if r.Headers.Get("Content-Length") != "" {
+			return totalBytesParsed, ErrInvalidContentLengthExpectedMore
+		}
 	}
 
 	return totalBytesParsed, nil

@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/kx0101/httpfromtcp/internal/request"
@@ -19,6 +22,50 @@ func main() {
 
 		var status response.StatusCode
 		var body string
+
+		if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin/") {
+			targetPath := strings.TrimPrefix(req.RequestLine.RequestTarget, "/httpbin/")
+			resp, err := http.Get("https://httpbin.org/" + targetPath)
+
+			if err != nil {
+				w.WriteStatusLine(response.InternalServerError)
+				w.Write([]byte(fmt.Sprintf("Failed to proxy request: %v", err)))
+
+				return nil
+			}
+
+			defer resp.Body.Close()
+
+			w.WriteStatusLine(response.StatusCode(resp.StatusCode))
+
+			for k, v := range resp.Header {
+				w.SetHeader(k, strings.Join(v, ", "))
+			}
+
+			w.Headers.Delete("Content-Length")
+			w.SetHeader("Transfer-Encoding", "chunked")
+
+			buf := make([]byte, 1024)
+			for {
+				n, err := resp.Body.Read(buf)
+				if n > 0 {
+					fmt.Printf("Read %d bytes from httpbin\n", n)
+					w.WriteChunkedBody(buf[:n])
+				}
+
+				if err == io.EOF {
+					break
+				}
+
+				if err != nil {
+					break
+				}
+			}
+
+			w.WriteChunkedBodyDone()
+
+			return nil
+		}
 
 		switch req.RequestLine.RequestTarget {
 		case "/yourproblem":
