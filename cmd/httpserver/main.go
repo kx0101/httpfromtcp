@@ -79,6 +79,51 @@ func main() {
 			return nil
 		}
 
+		if req.RequestLine.RequestTarget == "/video" {
+			file, err := os.Open("./assets/vim.mp4")
+			if err != nil {
+				fmt.Println("Error opening video file:", err)
+
+				w.WriteStatusLine(response.InternalServerError)
+				w.Write([]byte(fmt.Sprintf("Failed to open video: %v", err)))
+
+				return nil
+			}
+
+			w.WriteStatusLine(response.OK)
+
+			w.SetHeader("Content-Type", "video/mp4")
+			w.Headers.Delete("Content-Length")
+			w.SetHeader("Transfer-Encoding", "chunked")
+
+			buf := make([]byte, 1024)
+			for {
+				n, err := file.Read(buf)
+				if n > 0 {
+					_, writeErr := w.WriteChunkedBody(buf[:n])
+					if writeErr != nil {
+						fmt.Println("Error writing chunked body:", writeErr)
+						break
+					}
+				}
+
+				if err == io.EOF {
+					break
+				}
+
+				if err != nil {
+					break
+				}
+			}
+
+			_, err = w.WriteChunkedBodyDone()
+			if err != nil {
+				fmt.Println("Error writing chunked body done:", err)
+			}
+
+			return nil
+		}
+
 		switch req.RequestLine.RequestTarget {
 		case "/yourproblem":
 			status = response.BadRequest
