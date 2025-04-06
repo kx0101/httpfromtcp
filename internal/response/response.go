@@ -105,7 +105,25 @@ func (w *Writer) WriteChunkedBodyDone() (int, error) {
 	finalChunk := []byte("0\r\n\r\n")
 	w.Body = append(w.Body, finalChunk...)
 
-	return len(finalChunk), nil
+	return len(w.Body), nil
+}
+
+func (w *Writer) WriteTrailers(h headers.Headers) error {
+	if w.State < 2 {
+		return fmt.Errorf("error: headers not written yet")
+	}
+
+	var trailerStr strings.Builder
+	for k, v := range h {
+		trailerStr.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
+	}
+
+	trailerStr.WriteString("\r\n")
+
+	w.Body = append(w.Body, []byte(trailerStr.String())...)
+	w.State = 3
+
+	return nil
 }
 
 func (w *Writer) Write(p []byte) (int, error) {

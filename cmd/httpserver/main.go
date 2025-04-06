@@ -1,14 +1,17 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
+	"github.com/kx0101/httpfromtcp/internal/headers"
 	"github.com/kx0101/httpfromtcp/internal/request"
 	"github.com/kx0101/httpfromtcp/internal/response"
 	"github.com/kx0101/httpfromtcp/internal/server"
@@ -18,8 +21,6 @@ const port = 42069
 
 func main() {
 	server, err := server.Serve(port, func(w *response.Writer, req *request.Request) *server.HandlerError {
-		w.SetHeader("X-Custom-Header", "test")
-
 		var status response.StatusCode
 		var body string
 
@@ -42,14 +43,19 @@ func main() {
 				w.SetHeader(k, strings.Join(v, ", "))
 			}
 
-			w.Headers.Delete("Content-Length")
 			w.SetHeader("Transfer-Encoding", "chunked")
+			w.SetHeader("Trailer", "X-Content-SHA256, X-Content-Length")
+			w.Headers.Delete("Content-Length")
+
+			var fullBody = make([]byte, 0)
 
 			buf := make([]byte, 1024)
 			for {
 				n, err := resp.Body.Read(buf)
 				if n > 0 {
 					fmt.Printf("Read %d bytes from httpbin\n", n)
+
+					fullBody = append(fullBody, buf[:n]...)
 					w.WriteChunkedBody(buf[:n])
 				}
 
@@ -63,6 +69,12 @@ func main() {
 			}
 
 			w.WriteChunkedBodyDone()
+
+			trailers := headers.Headers{
+				"X-Content-SHA256": fmt.Sprintf("%x", sha256.Sum256(fullBody)),
+				"X-Content-Length": strconv.Itoa(len(fullBody)),
+			}
+			w.WriteTrailers(trailers)
 
 			return nil
 		}
